@@ -7,28 +7,27 @@
 <br>
 
 ***
+```c
+pragma solidity 0.6.12;
 
-    
-        pragma solidity 0.6.12;
+interface MintLike {
+    function mint(address, uint256) external;
+}
 
-        interface MintLike {
-            function mint(address, uint256) external;
-        }
+interface ChainlogLike {
+    function getAddress(bytes32) external view returns (address);
+}
 
-        interface ChainlogLike {
-            function getAddress(bytes32) external view returns (address);
-        }
+interface DaiJoinLike {
+    function exit(address, uint256) external;
+}
 
-        interface DaiJoinLike {
-            function exit(address, uint256) external;
-        }
+interface VatLike {
+    function hope(address) external;
+    function suck(address, address, uint256) external;
+    function live() external view returns (uint256);
+}
 
-        interface VatLike {
-            function hope(address) external;
-            function suck(address, address, uint256) external;
-            function live() external view returns (uint256);
-        }
-
-        interface TokenLike {
-            function transferFrom(address, address, uint256) external returns (bool);
-        }    
+interface TokenLike {
+    function transferFrom(address, address, uint256) external returns (bool);
+}    
