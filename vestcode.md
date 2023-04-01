@@ -131,7 +131,7 @@ we also have variables like the <br> **cap** which represents the maximum amount
    `the constructor for the contract  initializes the contract by adding the msg.sender to the wards mapping with an id of 1 and emmiting the Rely event`.
 
 ## modifiers
-    the first modifier is the locked modifier which  requires that the locked status of each Awards is 0 and returns the system locked error if the locked isn't 0, if the locked status is 0 the modifier sets the locked value to 1 and then runs the function setting the locked value to 1 in the modifier prevents attackers from carrying out a replay attack. after the function has been executed the locked status is set to 0 again, this ensures that while the function is being executed and denies any further calls o the function.
+    the first modifier is the locked modifier which  requires that the locked status of each Awards is 0 and returns the system locked error if the locked isn't 0, if the locked status is 0 the modifier sets the locked value to 1 and then runs the function setting <br> the locked value to 1 in the modifier prevents attackers from carrying out a replay attack. after the function has been executed the locked status is set to 0 again, this ensures that while the function is being executed and denies any further calls o the function.
 
     the second modifier is the authentication modifier, this requires that  the msg.sender is the ward with id 1 which is also the person that deploys the contract as seen in the constructor
 
