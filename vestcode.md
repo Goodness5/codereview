@@ -43,7 +43,7 @@ it contains 3 functions the <br> **hope(address) external**: This function takes
 **live() external view returns (uint256):** This function does not take any parameters and returns a uint256 value. It is used to retrieve the current timestamp or block number of the blockchain where the contract is deployed. The view keyword indicates that this function does not modify the state of the contract.<br><br>
 * TokenLike interface allows the contract to transfer tokens and check the allowance of an account by implementing the transferFrom function.
 
-#### The codebase is an Abstract contract i.e none of the functions were implemented or used which means the contract can also function as a reusable code source almost like a library.
+#### The first contract is an Abstract contract i.e none of the functions were implemented or used which means the contract can also function as a reusable code source almost like a library.
 The contract was already decleared as an abstract contract in the contract initialization 
 ```solidity
 
@@ -131,9 +131,9 @@ we also have variables like the <br> **cap** which represents the maximum amount
    `the constructor for the contract  initializes the contract by adding the msg.sender to the wards mapping with an id of 1 and emmiting the Rely event`.
 
 ## modifiers
-    the first modifier is the locked modifier which  requires that the locked status of each Awards is 0 and returns the system locked error if the locked isn't 0, if the locked status is 0 the modifier sets the locked value to 1 and then runs the function setting <br> the locked value to 1 in the modifier prevents attackers from carrying out a replay attack. after the function has been executed the locked status is set to 0 again, this ensures that while the function is being executed and denies any further calls o the function.
+    the first modifier is the locked modifier which  requires that the locked status of each Awards is 0 and returns the system locked error if the locked isn't 0, if the locked status is 0 the modifier sets the locked value to 1 and then runs the function setting the locked value to 1 in the modifier prevents attackers from carrying out a replay attack. after the function has been executed the locked status is set to 0 again, this ensures that while the function is being executed and denies any further calls o the function.
 
-    the second modifier is the authentication modifier, this requires that  the msg.sender is the ward with id 1 which is also the person that deploys the contract as seen in the constructor
+    the second modifier is the authentication modifier, this requires that  the msg.sender is the ward with id 1 which is also the person that deploys the contract as seen in the constructor. this could also be regarded as a special priviledge and administration account.
 
 ## Functions
  **A. Getter functions:** <br>there are 8 getter functions to return the information stored in the struct they are view functions i.e they don't make any changes to the state. they take in the award Id as input to access the struct and return each information in the struct we have:..
@@ -148,7 +148,131 @@ we also have variables like the <br> **cap** which represents the maximum amount
 
 `i have expalined each of these variables above`
 
+**B. Abstract Contract functions:** <br>
+* The rely function takes an address _usr as an argument and sets the value of wards[_usr] to 1. This grants the address _usr permission to participate in the vesting as a recipient. The auth modifier indicates that only a specific authorized user which was initialized in the constructor can call this function. A rely event is emmited with the address of the person added.
+* The deny function takes an address _usr as an argument and sets the value of wards[_usr] to 0. This fuction revokes the permission of the address _usr from participating. Similar to the rely function, the auth modifier indicates that only an authorized user or contract can call this function while an event is being emmited with the adress of the revoked or denied person.
+* **The file function:** The function takes two arguments: what, which is a bytes32 variable that indicates what parameter is being set, and data, which is a uint256 variable that contains the value to which the parameter is being set. the file function is basically used to set the cap value  which is why we have an IF statement that checks if the parameter being set is the cap else it reverts while if true it sets the cap variable to the uint data parameter passed in.
+```solidity 
+      if(what == "cap")
+              cap = data; 
+        else revert("DssVest/file-unrecognized-param");
+```
+* The next set of functions are pure functions which dosn't read or modifies the state, they are used to perform mathematical operations while checking for overflows and underflows to prevent a mistake when handling mathematical operations that dosn't return a whole number. <br>
+The reqire statement after these functions ensures that the calculations does not overflow which can become a very serious bug.
+    ```solidity
+
+    function min(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        z = x > y ? y : x;
+    }
+    function add(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x + y) >= x, "DssVest/add-overflow");
+    }
+    function sub(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x - y) <= x, "DssVest/sub-underflow");
+    }
+    function mul(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require(y == 0 || (z = x * y) / y == x, "DssVest/mul-overflow");
+    }
+    function toUint48(uint256 x) internal pure returns (uint48 z) {
+        require((z = uint48(x)) == x, "DssVest/uint48-overflow");
+    }
+    function toUint128(uint256 x) internal pure returns (uint128 z) {
+        require((z = uint128(x)) == x, "DssVest/uint128-overflow");
+    }
+    ```
+* **The create function:** This function initializes a new vesting award by taking in the parameters and setting them to the struct by making use of the id to map an award. the function can only be called or executed by the ward with id 1 i.e the address that deploys the contract as is set in the constructor This function creates a new vesting award for a given user. It takes in several parameters:<br>
+    _usr: the address of the user who will receive the award<br>
+    _tot: the total amount of tokens to be awarded<br>
+    _bgn: the beginning of the vesting period, measured in Unix time (seconds since the Unix epoch)<br>
+    _tau: the duration of the vesting period, also measured in seconds <br>
+    _eta: the cliff period, which is the amount of time that must pass before any tokens can be awarded <br>
+    _mgr: the address of the manager who will oversee the award <br>
+    <br>
+    There are also several require statements to  check each of the users input to ensure that they are valid. This is a sanity check as the saying goes "you can't trust your users." There is also a require statement that ensures that the vesting duration is not greater than 20 years. this can be altered based on various design decisions.
+    After the sanity checks then we increment the Id from the last used Id by 1 using the command id = ++ids;, ids is the state variable that keeps track of the ids while id is a local variable decleared in the function and is being returned. After the id is being set the struct is initialized with those parameters accepted from the user and the struct is accessed using the mapping of uint to struct which takes in the id as the key to the struct.
+    After setting the values in the struct, an event is emmitted with the _usr address and the Id of the Award. we can also notice the conversion of the uint256 values to uint48 this happens since the Award struct is set to accept thhose values as uint48 and the user's end dosn't recorgnize this and may pass in a value greater than uint48 so the contract handles this  
+
+*  **The Vest:** there are 3 vest functions
+    ```solidity
+    function vest(uint256 _id) external {
+        _vest(_id, type(uint256).max);
+    }
 
 
+    function vest(uint256 _id, uint256 _maxAmt) external {
+        _vest(_id, _maxAmt);
+    }
+
+    function _vest(uint256 _id, uint256 _maxAmt) internal lock {
+        Award memory _award = awards[_id];
+        require(_award.usr != address(0), "DssVest/invalid-award");
+        require(_award.res == 0 || _award.usr == msg.sender, "DssVest/only-user-can-claim");
+        uint256 amt = unpaid(block.timestamp, _award.bgn, _award.clf, _award.fin, _award.tot, _award.rxd);
+        amt = min(amt, _maxAmt);
+        awards[_id].rxd = toUint128(add(_award.rxd, amt));
+        pay(_award.usr, amt);
+        emit Vest(_id, amt);
+    }
+    ```
+    - The first and second external vest functions implements the function overload properties i.e same function name with different input parameters
+    the first vest function provides the max-amount for the _vest function as the highest number available in the uint on the EVM this can be used when we want to allow unlimmited number while the second vest allows us to set a limit
+    - the _vest function contains the main logic that vests the token it is an internal function that takes in 2 parameters the Id and max amount. the id is used to retrieve the Award details from the Award struct using the mapping of id to struct. The function implements the lock modifier which has been explained above. <br>
+    The function firsts checks if the _usr address in the struct is not a zero address if it return a zero address this means that there is no Award with that id number i.e the data trying to be fetched does not exist, the second check requires that the msg.sender i.e the person calling the function is the _usr address i.e the vesting recipient the amount is then calculated using the unpaid function which will be discussed later. the amount is then passed to the min function alongside the maximum amount the user can get the min function returns the smaller value among these 2 parameters. this process helps to ensure that a user does not claim above the highest claimable at a time. then the rxd value is updated by adding the amount recieved by the user to the rxd values the rxd variable keeps track of the amount the user has received. then the amount get paid to the caller's address using the pay function which we will discuss as we progress.
+
+* **function accrued:** <br>
+**A.** The first function returns the amount of tokens accrued over a period of time it is external view function that only reads from the state and does not modify the state. it makes use of the second accrued function which is internal and pure to make the main calculations.<br>
+**B.** the second accrued function is an internal and pure function i.e it neither reads nor modifies the state. The function first checks if the current time is before the vesting period starts. If so, it returns 0. If the current time is after or equal to the vesting period end time, it returns the total amount of tokens to be vested.
+If the current time is between the vesting period start and end times, the function calculates the amount of tokens that have vested so far. It does this by taking the total amount of tokens to be vested and multiplying it by the time elapsed between the vesting period start and the current time, and then dividing that by the total duration of the vesting period. The resulting value represents the proportion of the total tokens that have vested so far.
+
+* **Function unpaid** <br>
+There are 2 different  unpaid functions<br>
+    - The external view unpaid function: this function returns the amount of claimable rewards of a particular award by taking in the id as parameter and using it to send the award struct information to the second internal unpaid function. The function also checks if the address of _usr is a zero address this will ensure that the award has been created.
+    - the internal pure function which takes in the parameters initialzed from the external unpaid function and returnsthe amount that has been accumulated after calculating based on the time.
+
+* **Restrict and Unrestrict function**
+    * The Restrict function takes in an award Id and also implemets the lock modifier to prevent reentrancy attacks this function also reuires admin access i.e requires either the owner of the award or the contract owner to call and sets the res variable in the struct to 1 which is also the restriction variable i explained above.
+    * The unrestrict does the same thing with the restrict function the only difference is that instead of setting the res variable to 1 sets it to 0 instead.
+
+* **Yank function:** 
+    we have 3 yank functions
+    ```solidity
+    function yank(uint256 _id) external {
+        _yank(_id, block.timestamp);
+    }
+    ``` 
+    this yank function is an external function that calls the internal _yank function passing in the id it took as parameter and the block.timestamp which returns the current epoch time. the yank function is used to remove a vesting immediately from the contract.
+
+    ```solidity
+     function yank(uint256 _id, uint256 _end) external {
+        _yank(_id, _end);
+    }
+    ```
+    this yank function also removes the vesting from the contract but not immediately but at the time set by the caller of the function.
+
+    **the _yank function** is an internal function that contains the logic that removes a vesting from the contract it takes in the vest id and the time it should be removed as parameters and ensures that the caller is either an admin or the vest owner, it also checks if the address _usr is not address zero i.e the vest actually exists. it checks if the _end time is less than the block.timestamp if true it resets the end time to the current block.timestamp this will make up for every time change during the transaction as the evm is relatively slow. if the new end time is less than the original end time, the vesting contract is modified to end at the new end time. If the new end time is less than the original cliff time, the vesting contract is modified to end and cliff at the new end time and the total amount of tokens vesting is set to zero. If the new end time is less than the original vesting end time but greater than or equal to the original cliff time, the vesting contract is modified to end at the new end time and the total amount of tokens vesting is set to the sum of the previously vested tokens and the new amount of tokens that would vest from the modified vesting contract.
+
+    it then emmits the yank event with the award id and the new endtime.
+
+* **The Move function:** <br>
+This function allows the user who owns the vesting contract with the given _id to move ownership of the contract to a new address _dst.
+The function first checks that the caller of the function is the current owner of the vesting contract. It then checks that the new owner address _dst is not the zero address.
+If both checks pass, the function updates the usr field of the Award struct associated with the given _id to the new owner address _dst. Finally, it emits a Move event with the _id and _dst as arguments to signal the ownership transfer.
+
+* **Valid function:** <br>
+The function checks if the amount of rewards received so far (awards[_id].rxd) is less than the total amount of rewards that the contract is supposed to distribute (awards[_id].tot). If the amount of rewards received is less than the total amount, the function returns true, indicating that the contract is still valid and has rewards to distribute. Otherwise, the function returns false, indicating that the contract has distributed all of its rewards and is no longer valid.
+
+* **the pay function:** <br>
+This fuction contains no logic and the developer is expected to write their payment logic. the function takes 2 parameters the _guy(recipient) and the _amt(amount to be sent).
+****
 
 
+## DSSVESTMINTABLE Contract 
+ This contract is the contract that adds minting functionality when a user comes to claim their vested tokens, it inherits the DSSVest contract.
+
+ ### variables
+ There is only one state variable (gem) which is of datatype ``Mintlike interface``
+ the gem variable is set to immutable and is deployed with the contract in the constructor. the constructor takes in an address parameter which is the address of the token being vested, it checks if it isn't address zero. and then passes the address into the Mintlike interface then assigns it to the gem variable since the gem variable is of type `Mintlike`
+
+ There is only one function added to the contract the **pay function** which i expalined above but the logic is being implemented and the gem address is calling the mint function in the gem address and minting to the _guy address the _amt(amount).
+
+ ## DssVestSuckable Contract 
