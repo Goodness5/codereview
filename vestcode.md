@@ -311,3 +311,44 @@ This pay function transfers Dai to the recipient _guy by first "sucking" the Dai
 The vat.suck function takes three arguments: the first is the address of the Vow contract, which is where excess Dai is sent in the MakerDAO system. The second is the address of the contract that will receive the Dai being sucked, which in this case is the DssVestSuckable contract itself. The third argument is the amount of Dai to suck from the Vat, which is calculated by multiplying _amt by the constant RAY, which has a value of 10^27. This converts the _amt from units of Dai (where 1 Dai = 10^18) to units of "rad", where 1 rad = 10^45.
 
 Finally, the daiJoin.exit function is called to transfer the Dai to the _guy address. This function takes two arguments: the first is the address to which the Dai will be transferred (in this case, _guy), and the second is the amount of Dai to transfer.
+******************************** 
+<br>
+
+# DssVestTransferrable Contract
+The DssVestTransferrable contract allows users to transfer the vested tokens to another address
+
+## variables
+There are two variables present in this contract and they are immutable, i.e can't bee changed.
+```solidity
+    address   public immutable czar;
+    TokenLike public immutable gem;
+```
+**czar** - the address that is authorized to transfer vested tokens <br>
+**gem** - the contract address of the token being vested
+
+```solidity
+  constructor(address _czar, address _gem) public DssVest() {
+        require(_czar != address(0), "DssVestTransferrable/Invalid-distributor-address");
+        require(_gem  != address(0), "DssVestTransferrable/Invalid-token-address");
+        czar = _czar;
+        gem  = TokenLike(_gem);
+    }
+```
+The two addresses are being passed into the contract at construction time i.e when the contract is being deployed. A check is also carried out to validate that the addresses are not zero addresses.
+
+## functions
+
+```solidity
+  function pay(address _guy, uint256 _amt) override internal {
+        require(gem.transferFrom(czar, _guy, _amt), "DssVestTransferrable/failed-transfer");
+    }
+```
+The only function being added here is the pay function which i've explained before, it takes in the _guy(receiver) and _amt(amount) to be sent it is an internal function which means there must be an external function implementing the pay function.
+
+_____
+<br>
+<br>
+<br>
+<br>
+
+<span style="font-size: 100px"> END 
