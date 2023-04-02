@@ -266,13 +266,48 @@ This fuction contains no logic and the developer is expected to write their paym
 ****
 
 
-## DSSVESTMINTABLE Contract 
+# DSSVESTMINTABLE Contract 
  This contract is the contract that adds minting functionality when a user comes to claim their vested tokens, it inherits the DSSVest contract.
 
- ### variables
+ ## variables
  There is only one state variable (gem) which is of datatype ``Mintlike interface``
  the gem variable is set to immutable and is deployed with the contract in the constructor. the constructor takes in an address parameter which is the address of the token being vested, it checks if it isn't address zero. and then passes the address into the Mintlike interface then assigns it to the gem variable since the gem variable is of type `Mintlike`
 
  There is only one function added to the contract the **pay function** which i expalined above but the logic is being implemented and the gem address is calling the mint function in the gem address and minting to the _guy address the _amt(amount).
 
- ## DssVestSuckable Contract 
+ # DssVestSuckable Contract 
+ The DssVestSuckable contract is a contract that inherits from the DssVest contract and adds functionality to handle the payment of ERC-20 Dai tokens by sucking them from the MakerDAO Vat using the suck function and then exiting them to the specified recipient using the exit function of the DaiJoin contract.
+
+ ## variables
+* RAY is a constant with the value of 10^27.
+* chainlog is an instance of the ChainlogLike contract interface, which represents the MCD chainlog contract.
+* vat is an instance of the VatLike contract interface, which represents the MCD vat contract.
+* daiJoin is an instance of the DaiJoinLike contract interface, which represents the MCD Dai join contract.
+
+    **Notes:** MCD stands for "Multi-Collateral Dai". It is a decentralized stablecoin system built on the Ethereum blockchain. The system is designed to allow users to deposit various types of collateral, such as Ether and other ERC-20 tokens, in exchange for generating the stablecoin Dai. MCD also allows for the creation of new collateral types through a community-driven governance process. The system is governed by MKR token holders who participate in making decisions on system upgrades, collateral risk parameters, and other key governance aspects.
+
+The constructor of the contract takes in an address _chainlog which is used to set the chainlog variable. The chainlog is a contract that acts as a registry of all the system's contracts and addresses 
+The require function is used to check against weather the chainlog address is not address zero then saves the _chainlog value to the chainlog variable after being typecasted with the chainloglike interface.
+```solidity
+   constructor(address _chainlog) public DssVest() {
+        require(_chainlog != address(0), "DssVestSuckable/Invalid-chainlog-address");
+        ChainlogLike chainlog_ = chainlog = ChainlogLike(_chainlog);
+        VatLike vat_ = vat = VatLike(chainlog_.getAddress("MCD_VAT"));
+        DaiJoinLike daiJoin_ = daiJoin = DaiJoinLike(chainlog_.getAddress("MCD_JOIN_DAI"));
+
+        vat_.hope(address(daiJoin_));
+    }
+```
+The ChainlogLike contract is used to obtain the addresses of other contracts that are part of the MCD system. The getAddress() function is used to obtain the address of the MCD_VAT contract, which is then used to initialize the VatLike contract instance.
+
+The DaiJoinLike contract is used to interact with the MCD_JOIN_DAI contract, which is responsible for converting Dai tokens to the internal gem token used by the MCD system.
+The hope() function is called on the VatLike contract to give permission to the DaiJoinLike contract to interact with the VatLike contract.
+
+## **fuctions**
+
+**pay function** <br>
+This pay function transfers Dai to the recipient _guy by first "sucking" the Dai from the MakerDAO Vat contract using vat.suck, and then transferring it to the _guy address using daiJoin.exit.
+
+The vat.suck function takes three arguments: the first is the address of the Vow contract, which is where excess Dai is sent in the MakerDAO system. The second is the address of the contract that will receive the Dai being sucked, which in this case is the DssVestSuckable contract itself. The third argument is the amount of Dai to suck from the Vat, which is calculated by multiplying _amt by the constant RAY, which has a value of 10^27. This converts the _amt from units of Dai (where 1 Dai = 10^18) to units of "rad", where 1 rad = 10^45.
+
+Finally, the daiJoin.exit function is called to transfer the Dai to the _guy address. This function takes two arguments: the first is the address to which the Dai will be transferred (in this case, _guy), and the second is the amount of Dai to transfer.
